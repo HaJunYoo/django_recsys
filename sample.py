@@ -9,19 +9,18 @@ from sklearn.metrics.pairwise import cosine_similarity
 
 from predict.models import PredResults
 
-from predict.embedding import *
-from predict.list import *
-
-from timeit import default_timer as timer
-
-from konlpy.tag import Okt
-
-tokenizer = Okt()
-
 ##이미지 featur를 저장한 csv파일을 불러오는 함수
 def load_img_feature():
     img_feature = pd.read_csv("predict/data/img_feature.csv", index_col=0)
     return img_feature
+
+#   코사인유사도를 구한 행렬을 역순으로 정렬 -> 유사도가 높은 순의 인덱스로 정렬됨
+#   시간 복잡도가 제일 오래 걸림 => 여기서 시간을 제일 많이 소모됨 => O(n*logn)
+#   sim_sorted_ind=sim.argsort()[:,::-1]
+sim_sorted_ind = np.load('predict/data/sim_sorted.npy')
+df = pd.read_csv('predict/data/merged_df_review.csv', index_col='Unnamed: 0')
+img_df = load_img_feature()
+
 
 ## 이미지 유사도로 검색 - 총 100개의 유사 제품 리스트 return
 # input data: 검색 시 텍스트 유사도 검색 시 가장 관련 있는 제품명
@@ -37,48 +36,33 @@ def img_sim(img_feature, name):
     # 이미지 유사도 거리 계산
     dists = np.linalg.norm(items - no1, axis=1)
 
-    # 유클리디안 거리가 가장 가까운 1000개의 상품명 리스트 추출
-    idxs = np.argsort(dists)[:1000]
+    # 유클리디안 거리가 가장 가까운 200개의 상품명 리스트 추출
+    idxs = np.argsort(dists)[:250]
     scores = [img_feature.loc[idx, "name"] for idx in idxs]
 
     return scores
 
-#############################################################
 
-#   코사인유사도를 구한 행렬을 역순으로 정렬 -> 유사도가 높은 순의 인덱스로 정렬됨
-#   시간 복잡도가 제일 오래 걸림 => 여기서 시간을 제일 많이 소모됨 => O(n*logn)
-#   sim_sorted_ind=sim.argsort()[:,::-1]
-# sim_sorted_ind = np.load('predict/data/sim_sorted.npy')
-df = pd.read_csv('predict/data/merged_df_review.csv', index_col='Unnamed: 0')
-img_df = load_img_feature()
+# 단어 벡터 평균구하기
+def vectors(embedding):
+    # vector size 만큼
+    tmp = np.zeros(500)
+    count = 0
 
+    # embedding = list of list corpus
+    for word in embedding:
+        try:
+            # word에 해당하는 단어를 워드투백에서 찾아 해당 벡터를 리스트에 붙힘
+            # 100차원으로 형성됨
+            tmp += word2vec.wv[word]
+            count += 1
+        except:
+            pass
 
-################################################################
-# embeddings.py에서 함수들 임포트
+    tmp /= count  # 아이템 갯수로 전체 벡터를 mean해줌
 
-###################################################
+    return (tmp)
 
-df["tags"] =  df["tags"].apply(lambda x : make_list(x))
-df["review_tagged_cleaned"] =  df["review_tagged_cleaned"].apply(lambda x : make_list(x))
-df["coordi"] =  df["coordi"].apply(lambda x : make_list(x))
-
-col_dict = {0:"name", 1:"main_category", 2:"sub_category", 3: "brand", 4:"tags", 5:"coordi"}
-
-word = []
-for idx, row in df.iterrows():
-    temp = []
-    for i in range(0, 6):
-        if type(row[col_dict[i]]) is list:
-            #             print(f'col_dict{i} is an list')
-            temp.extend(row[col_dict[i]])
-        else:
-            temp.append(row[col_dict[i]])
-    word.append(temp)
-
-
-mean_vector = np.array([vectors(x) for x in word])
-# print(mean_vector.shape)
-# print(word2vec.wv['스트릿'])
 
 def age_col(age):
     if age <= 18:
@@ -211,40 +195,15 @@ def img_predict(request):
 
         # Make prediction
         try :
-            start = timer()
-            # Okt가 시간이 엄청 걸림
-
-            string_list = word_tokenize(input_text) # 리스트 형태
-
-            end = timer()
-            time = end - start
-
-            vec_input = aggregate_vectors(string_list)
-            # vec_input = word2vec.wv[input_text]
-            print(vec_input)
-
-            cosine_sim = []
-            for idx, vec in enumerate(mean_vector):
-                vec1 = vec_input.reshape(1, -1)
-                vec2 = vec.reshape(1, -1)
-                cos_sim = cosine_similarity(vec1, vec2)[0][0]
-                cosine_sim.append((idx, cos_sim))
-
-            temp_sim = []
-            for elem in cosine_sim:
-                temp_sim.append(elem[1])
-
-            temp_df = df.copy()
-            temp_df['wv_cosine'] = temp_sim
-
-            df1 = df[df['sub_category'].str.contains(sub_category)]
-            df2 = temp_df.sort_values(by='wv_cosine', ascending=False)
-            sim_df = pd.merge(df1, df2, how='inner', on='name')
-            sim_df = sim_df.sort_values(by='wv_cosine', ascending=False)
-
+            # 세부 카테고리 => word string => 200개
+            category_df = df[df['sub_category'].str.contains(sub_category)]
+            text_df = category_df[category_df['word_string'].str.contains(input_text)]
+            text_index = text_df.index.values
+            similar_indexes = sim_sorted_ind[text_index, 1:200]
+            # 텍스트 유사도
+            sim_df = df.iloc[similar_indexes[0]]
             name = sim_df['name'].values[0]
             print(name)
-
             img_score = img_sim(img_df, name)  # 200개 추출
             # print(img_score)
             # 이미지 유사도
@@ -252,26 +211,10 @@ def img_predict(request):
             # image_df = image_df[image_df['sub_category'].str.contains(sub_category)]
 
             temp = pd.merge(image_df, sim_df, how='inner', on='name')
-
+            print(temp.columns)
             temp = temp.sort_values(by='scaled_rating_x',ascending=False)
             temp = temp[:top_n]
-
-            temp = temp.sort_values(by='wv_cosine', ascending=False)
-            # print(temp.columns)
-            '''
-            'name', 'main_category', 'sub_category', 'brand', 'number', 'tags',
-           'price', 'rating', 'rating_num', 'season', 'gender', 'like', 'view',
-           'sale', 'coordi', 'age18', 'age19_23', 'age24_28', 'age29_33',
-           'age34_39', 'age40', 'man', 'woman', 'img', '_1', 'year', 'only_season',
-           'scaled_rating', 'review_tagged_cleaned', 'word', 'word_string',
-           'review'
-            '''
-            print(type(temp['review_tagged_cleaned'][0]))
-
-
-
             classification = temp[['name', 'img_x', 'review_x', 'price_x']]
-            print(classification)
             name = list(classification['name'])
             img = list(classification['img_x'])
             review = list(classification['review_x'])
@@ -284,35 +227,14 @@ def img_predict(request):
             for i in range(len(classification)):
                 PredResults.objects.create(name=name[i], img=img[i], review=review[i] ,price=price[i])
 
-
-            #### Wordcloud 만들기
-            from wordcloud import WordCloud
-            from collections import Counter
-            string_list = temp['review_tagged_cleaned']
-            word_list = []
-            for words in string_list:
-                for word in words:
-                    if len(word) > 1:
-                        word_list.append(word)
-            # 가장 많이 나온 단어부터 40개를 저장한다.
-            counts = Counter(word_list)
-            tags = counts.most_common(40)
-            font = 'static/fonts/NanumSquareL.otf'
-
-            word_cloud = WordCloud(font_path=font, background_color='black', max_font_size=400,
-                                   colormap='prism').generate_from_frequencies(dict(tags))
-            word_cloud.to_file('static/무신사.png')
-            # 사이즈 설정 및 화면에 출력
-            ####
-
-
-            return JsonResponse({'name': name, 'time' : time}, safe=False)
+            return JsonResponse({'name': name, 'img': img}, safe=False)
 
         except :
+
             return JsonResponse({'name': "해당되는 추천이 없습니다. 다시 입력해주세요"}, safe=False)
 
     else :
-        return render(request, 'image_predict.html', {'list': sub_category_list})
+        return render(request, 'image_predict.html')
 
 
 def view_results(request):
