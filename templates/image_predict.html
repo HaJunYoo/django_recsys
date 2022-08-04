@@ -60,9 +60,9 @@
                 {% csrf_token %}
 
                 <div class="form-group">
-                    <label for="sub_category">카테고리 입력</label>
-                    <select class="form-control" id = "sub_category"  required>
-                      <option selected> 서브 카테고리를 선택해주세요  </option>
+                    <label for="main_category">카테고리 입력</label>
+                    <select class="form-control" id = "main_category"  required>
+                      <option selected> 메인 카테고리를 선택해주세요  </option>
                       {% for elem in list %}
 
                         <option value={{ elem }}>{{ elem }}</option>
@@ -107,7 +107,7 @@
             data:{
                 input_text:$('#input_text').val(),
                 topn:$('#top_n').val(),
-                sub_category:$('#sub_category').val(),
+                main_category:$('#main_category').val(),
 
                 csrfmiddlewaretoken:$('input[name=csrfmiddlewaretoken]').val(),
                 action: 'post'

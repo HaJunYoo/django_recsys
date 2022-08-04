@@ -5,7 +5,7 @@ from nltk.tokenize import word_tokenize
 from gensim.models import Word2Vec
 from sklearn.metrics.pairwise import cosine_similarity
 
-word2vec = Word2Vec.load("predict/data/word2vec.model")
+word2vec = Word2Vec.load("predict/data/word2vec2.model")
 
 # 단어 벡터 평균구하기
 def vectors(embedding):
@@ -37,6 +37,7 @@ def aggregate_vectors(string_list):
             continue
 
     return np.mean(product_vec, axis=0)
+
 
 
 def make_list(string):
