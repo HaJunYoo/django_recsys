@@ -133,7 +133,7 @@ def predict(request):
             tot_result = recsys(main_category, coordi, input_text)
 
             result = tot_result[:top_n]
-            result = result.sort_values(by=["wv_cosine", "scaled_rating", "season"], ascending=False)
+            result = result.sort_values(by=["wv_cosine", "scaled_rating", "year"], ascending=False)
 
             print('1단계 :', result)
             print('2단계 :',result.columns)
@@ -257,7 +257,7 @@ def img_predict(request):
 
             print('8단계', temp)
 
-            temp = temp.sort_values(by='scaled_rating', ascending=False)
+            temp = temp.sort_values(by=['wv_cosine','scaled_rating','year'], ascending=False)
             # print(temp.columns)
             print('9단계', temp)
 
