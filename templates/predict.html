@@ -57,63 +57,35 @@
             <form action="" id="post-form">
                 {% csrf_token %}
 
-                <div class="form-group">
-                    <label for="gender">성별 </label>
-                    <br>
-                    <select class="form-control" id = "gender"  required>
-                      <option selected>성별을 선택해주세요  (남자: M, 여자: F)  </option>
-                      <option value="M">남자(M)</option>
-                      <option value="F">여자(F)</option>
-                    </select>
-                </div>
-
-                <div class="form-group">
-                    <label for="age">나이</label>
-                    <input type="number" step="1" class="form-control" id="age"
-                           placeholder="(나이)양의 정수를 입력해주세요" required>
-                </div>
 
                 <div class="form-group">
                     <label for="main_category">카테고리</label><br>
-                    <select class="form-control" id = "main_category"  required>
-                      <option selected> 카테고리를 선택해주세요(필수)  </option>
-                      <option value="가방">가방</option>
-                      <option value="모자">모자</option>
-                      <option value="상의">상의</option>
-                      <option value="스니커즈">스니커즈</option>
-                      <option value="스커트">스커트</option>
-                      <option value="스포츠가방">스포츠가방</option>
-                      <option value="스포츠모자">스포츠모자</option>
-                      <option value="스포츠신발">스포츠신발</option>
-                      <option value="신발">신발</option>
-                      <option value="아우터">아우터</option>
-                      <option value="원피스">원피스</option>
-                      <option value="하의">하의</option>
-                    </select>
+
+                    {% for elem in category_list  %}
+                    <div class="form-check form-check-inline">
+                    <input class="form-check-input" type="checkbox" id="main_category" value={{ elem }}>
+                    <label class="form-check-label" for="main_category">{{elem}}</label>
+                    </div>
+                    {%  endfor %}
 
                 </div>
 
+
+
                 <div class="form-group">
-                    <label for="coordi">코디</label>
-                    <select class="form-control" id = "coordi"  required>
-                      <option selected> 코디 타입을 선택해주세요  </option>
-                      <option value="캐주얼">캐주얼</option>
-                      <option value="아메리칸 캐주얼">아메리칸 캐주얼</option>
+                    <label for="coordi">코디</label><br>
 
-                      <option value="포멀">포멀</option>
-                      <option value="댄디">댄디</option>
+                    {% for elem in coordi_list  %}
+                    <div class="form-check form-check-inline">
+                    <input class="form-check-input" type="checkbox" id="coordi" value={{ elem }}>
+                    <label class="form-check-label" for="coordi">{{elem}}</label>
+                    </div>
+                    {%  endfor %}
+                    <div class="form-check form-check-inline">
+                    <input class="form-check-input" type="checkbox" id="coordi" value="">
+                    <label class="form-check-label" for="coordi">없음</label>
+                    </div>
 
-                      <option value="로맨틱">로맨틱</option>
-                      <option value="걸리시">걸리시</option>
-
-                      <option value="스트릿">스트릿</option>
-                      <option value="시크">시크</option>
-
-                      <option value="골프">골프</option>
-                      <option value="스포츠">스포츠</option>
-                      <option value="홈웨어">홈웨어</option>
-                      <option value="레트로">레트로</option>
-                    </select>
                 </div>
 
                 <div class="form-group">
@@ -139,8 +111,30 @@
 <script>
 
     $(document).on('submit', '#post-form',function(e){
+        // name이 같은 체크박스의 값들을 배열에 담는다.
+        var main_category_checkboxValues = [];
+        $("input[id='main_category']:checked").each( function(i) {
+        main_category_checkboxValues.push($(this).val());
+        });
+
+        var coordi_checkboxValues = [];
+        $("input[id='coordi']:checked").each( function(i) {
+        coordi_checkboxValues.push($(this).val());
+        });
+
+        console.log(main_category_checkboxValues);
+        console.log(coordi_checkboxValues);
+
+        var main_category_string = main_category_checkboxValues.toString()
+        var coordi_string = coordi_checkboxValues.toString()
+
+        console.log(main_category_string);
+        console.log(coordi_string);
+
+
         {# submit -> 연쇄 다음 이벤트 묵살 -> ajax 실행 #}
         e.preventDefault();
+
         $.ajax({
             type:'POST',
             {#app = predict, reference url namespace => submit_prediction #}
@@ -149,10 +143,11 @@
             data:{
                 input_text:$('#input_text').val(),
                 topn:$('#top_n').val(),
-                age:$('#age').val(),
-                coordi:$('#coordi').val(),
-                gender:$('#gender').val(),
-                main_category:$('#main_category').val(),
+                {#age:$('#age').val(),#}
+                {#gender:$('#gender').val(),#}
+
+                coordi: coordi_string,
+                main_category: main_category_string,
 
                 csrfmiddlewaretoken:$('input[name=csrfmiddlewaretoken]').val(),
                 action: 'post'
@@ -174,5 +169,6 @@
     })
 
 </script>
+
 
 {% endblock %}

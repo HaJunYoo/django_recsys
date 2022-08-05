@@ -8,6 +8,8 @@ urlpatterns = [
     path('img-predict/', views.img_predict, name='image_prediction_page'),
     # path('item-predict/', views.item_predict, name='item_prediction_page'),
 
+    path('topics/', views.view_topic, name='topics'),
+
     path('results/', views.view_results, name='results'),
     path('wordcloud/', views.view_wordcloud, name='wordcloud'),
 ]
